@@ -3,6 +3,8 @@ pywin32>=305
 # pywin32 provides access to many Windows APIs, including registry and COM libraries
 wmi>=1.5.1
 # wmi offers a Pythonic interface to Windows Management Instrumentation
+argparse
+wxPython
 
 # System utilities
 pathlib>=1.0.1
@@ -14,7 +16,10 @@ psutil>=5.9.0
 tqdm>=4.65.0
 # tqdm helps display progress bars for user feedback
 
-# Optional - GUI dependencies (for future implementation)
-# tkinter is usually included with Python installation
-# PyQt5>=5.15.9    # Uncomment if implementing GUI
-# Uncomment PyQt5 if implementing a graphical user interface
+# GUI dependencies
+wxPython>=4.1.1
+# wxPython is used for creating the graphical user interface
+
+# PyInstaller for creating executables
+pyinstaller>=4.5
+# PyInstaller is used to compile the script into an executable format
