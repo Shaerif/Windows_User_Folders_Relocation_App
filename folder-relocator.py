@@ -348,11 +348,11 @@ class UserFolderRelocator:
                         if delete_files:
                             # Confirm with the user before deleting files
                             if self.gui:
-                                confirm = wx.MessageBox(f"Do you want to delete the original file {source_file}?", "Confirm", wx.YES_NO | wx.ICON_QUESTION)
+                                confirm = wx.MessageBox(f"Do you want to delete the original file {source_file} after MD5 check?", "Confirm", wx.YES_NO | wx.ICON_QUESTION)
                                 if confirm != wx.YES:
                                     continue
                             else:
-                                confirm = input(f"Do you want to delete the original file {source_file}? (yes/no): ")
+                                confirm = input(f"Do you want to delete the original file {source_file} after MD5 check? (yes/no): ")
                                 if confirm.lower() != 'yes':
                                     continue
                             source_file.unlink()

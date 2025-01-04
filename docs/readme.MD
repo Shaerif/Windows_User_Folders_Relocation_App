@@ -334,3 +334,24 @@ You can view the status of the CI pipeline in the repository's **Actions** tab. 
 ## 📜 License
 
 Non-Commercial Educational and Non-Profit License - See LICENSE file for details
+
+
+---
+
+## 📊 Project Statistics
+
+<div align="center">
+
+### 🕒 Development Metrics
+| Metric | Value |
+|:------:|:-----:|
+| Time Invested | 13 hours and 40 minutes |
+| Last Updated | 2025-01-04 10:50:23 EST |
+| Release Status | Beta |
+| Active Contributors | 1 |
+
+</div>
+
+> **Note**: Time tracking started from project inception. Updates are automated via GitHub Actions.
+
+---
