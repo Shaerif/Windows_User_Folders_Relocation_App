@@ -22,6 +22,7 @@
 - [ ] Add detailed analytics.
 - [ ] Enhance customization options.
 - [ ] Ensure files are not deleted unless the user chooses to delete them after MD5 check and report to the user before deletion.
+- [ ] **[New]** Ensure logging is functioning correctly and log files are being created.
 
 ## In Progress
 

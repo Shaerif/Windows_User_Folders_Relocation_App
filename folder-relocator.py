@@ -131,38 +131,34 @@ class UserFolderRelocator:
         
     def setup_logging(self):
         # Configures logging to both a file and console with detailed format
-        log_dir = self.user_home / "WindowsUserFoldersRelocation" / "logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        self.log_file = log_dir / f"folder_relocation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        
-        file_handler = logging.FileHandler(self.log_file)
-        console_handler = logging.StreamHandler(sys.stdout)
-        
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - [Run ID: %(run_id)s] - [User ID: %(user_id)s] - %(message)s')
-        file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
-        
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
-        
-        self.user_id = getpass.getuser()  # Get current username
-        self.logger = logging.LoggerAdapter(self.logger, {'run_id': self.run_id, 'user_id': self.user_id})  # Attach run_id and user_id to logger
-        self.logger.info("Logging setup complete.")
-        self.logger.debug("Logging initialized with DEBUG level.")
+        try:
+            file_handler = logging.FileHandler(self.log_file, encoding='utf-8')
+            console_handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - [Run ID: %(run_id)s] - [User ID: %(user_id)s] - %(message)s')
+            file_handler.setFormatter(formatter)
+            console_handler.setFormatter(formatter)
+            self.logger = logging.getLogger(__name__)
+            self.logger.setLevel(logging.DEBUG)
+            self.logger.addHandler(file_handler)
+            self.logger.addHandler(console_handler)
+            self.user_id = getpass.getuser()  # Get current username
+            self.logger = logging.LoggerAdapter(self.logger, {'run_id': self.run_id, 'user_id': self.user_id})  # Attach run_id and user_id to logger
+            self.logger.info("Logging setup complete.")
+            self.logger.debug("Logging initialized with DEBUG level.")
+        except Exception as e:
+            print(f"❌ Failed to set up logging: {e}")
+            sys.exit(1)
     
     def is_admin(self):
+        """Checks for administrative privileges."""
         self.logger.debug("Checking for administrative privileges.")
         try:
-            is_admin = ctypes.windll.shell32.IsUserAnAdmin()
-            self.logger.debug(f"Administrative privileges: {is_admin}")
-            return is_admin
-        except Exception as e:
-            self.logger.error("Failed to check administrative privileges.")
-            self.logger.error(traceback.format_exc())
-            return False
-    
+            is_admin = os.getuid() == 0
+        except AttributeError:
+            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+        self.logger.debug(f"Is admin: {is_admin}")
+        return is_admin
+
     def get_user_shell_folders_path(self):
         # Returns the registry path holding user folder locations.
         # This is the location we need to update for folder relocation.
@@ -975,3 +971,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+``` 

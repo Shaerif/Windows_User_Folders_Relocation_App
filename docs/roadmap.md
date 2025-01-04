@@ -10,6 +10,7 @@
 ### Phase 2: GUI Enhancements
 - **Add GUI Options:** Add options in the GUI to skip checksum validation, delete files after relocation, and use the new location as the default for Windows.
 - **Improve Error Handling:** Enhance error handling to provide more informative messages and recovery options.
+- **[New]** **Logging Enhancements:** Ensure that all GUI actions are properly logged and that log files are accessible to the user.
 
 ### Phase 3: Performance Optimization
 - **Optimize Performance:** Optimize the script for faster file operations and lower resource usage.
@@ -20,8 +21,8 @@
 - **Documentation:** Create detailed documentation for developers and users.
 
 ### Phase 5: CLI & GUI Dual Options
-- **Allow Both CLI and GUI Use**: Make it possible to run the tool in either CLI or GUI mode at the user's discretion.
-- **Documentation Update**: Reflect the new dual-run capability throughout all relevant documentation.
+- **Allow Both CLI and GUI Use:** Make it possible to run the tool in either CLI or GUI mode at the user's discretion.
+- **Documentation Update:** Reflect the new dual-run capability throughout all relevant documentation.
 
 ### Phase 6: Future Enhancements
 - **Additional Features:** Explore additional features based on user feedback and project requirements.

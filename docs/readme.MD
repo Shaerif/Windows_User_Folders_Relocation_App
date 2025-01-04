@@ -335,9 +335,19 @@ You can view the status of the CI pipeline in the repository's **Actions** tab. 
 
 Non-Commercial Educational and Non-Profit License - See LICENSE file for details
 
+## Logging
+
+Log files are automatically created in the `WindowsUserFoldersRelocation/logs` directory within your home folder. These logs track all operations performed by the tool, including any errors encountered.
+
+## Accessing Logs
+
+After running the application, you can find the log files at:
+```
+<path_to_home_directory>/WindowsUserFoldersRelocation/logs/
+```
+These logs provide detailed information about the operations performed by the tool, which can be useful for troubleshooting and verifying actions.
 
 ---
-
 ## 📊 Project Statistics
 
 <div align="center">
@@ -355,3 +365,4 @@ Non-Commercial Educational and Non-Profit License - See LICENSE file for details
 > **Note**: Time tracking started from project inception. Updates are automated via GitHub Actions.
 
 ---
+````
