@@ -1,38 +1,39 @@
-
 # Contributing to Windows User Folders Relocation App
 
-Thank you for your interest in contributing to the Windows User Folders Relocation App! We welcome all contributions that help improve the project. Whether it's fixing bugs, enhancing features, or improving documentation, your efforts are appreciated.
+First off, thank you for considering contributing to our project! 🎉
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
-- [How to Contribute](#how-to-contribute)
-  - [Reporting Issues](#reporting-issues)
-  - [Submitting Pull Requests](#submitting-pull-requests)
-- [Development Setup](#development-setup)
-- [Running Tests](#running-tests)
-- [Style Guidelines](#style-guidelines)
-- [Commit Messages](#commit-messages)
-- [License](#license)
+- [Contributing to Windows User Folders Relocation App](#contributing-to-windows-user-folders-relocation-app)
+  - [Table of Contents](#table-of-contents)
+  - [Code of Conduct](#code-of-conduct)
+  - [How Can I Contribute?](#how-can-i-contribute)
+    - [Reporting Bugs](#reporting-bugs)
+    - [Suggesting Enhancements](#suggesting-enhancements)
+    - [Pull Requests](#pull-requests)
+  - [Development Setup](#development-setup)
+  - [Running Tests](#running-tests)
+  - [Style Guidelines](#style-guidelines)
+  - [Commit Messages](#commit-messages)
+  - [License](#license)
 
 ## Code of Conduct
 
-By contributing, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md). Please read it to understand the standards we expect from all contributors.
+Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming and respectful environment for all contributors.
 
-## How to Contribute
+## How Can I Contribute?
 
-### Reporting Issues
+### Reporting Bugs
 
-If you encounter bugs or have suggestions for improvements, please [open an issue](https://github.com/shaerif/windows-user-folders-relocation-tool/issues) on GitHub. When reporting an issue, please include:
+If you find a bug in the application, please open an issue in the [GitHub Issues](https://github.com/shaerif/windows-user-folders-relocation-tool/issues) section with detailed information about the problem and steps to reproduce it.
 
-- A clear and descriptive title.
-- A detailed description of the problem or suggestion.
-- Steps to reproduce the issue (if applicable).
-- Any relevant screenshots or logs.
+### Suggesting Enhancements
 
-### Submitting Pull Requests
+Have an idea to improve the project? Open an issue to discuss your proposal. We're open to new ideas and features that can benefit the project.
 
-Pull requests are how you propose changes to the project. Here's how to submit one:
+### Pull Requests
+
+We welcome contributions in the form of pull requests. Here's how you can get started:
 
 1. **Fork the Repository**
 
@@ -46,27 +47,21 @@ Pull requests are how you propose changes to the project. Here's how to submit o
 
 3. **Create a New Branch**
 
-   It's best to create a new branch for each feature or bugfix.
-
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
 4. **Make Your Changes**
 
-   Implement your feature or bugfix. Ensure your code follows the project's coding standards.
+   Implement your feature or bug fix. Ensure your code follows the project's style guidelines.
 
 5. **Run Tests**
 
-   Ensure all existing tests pass and add new tests for your changes if necessary.
+   Ensure all tests pass before submitting your changes.
 
 6. **Commit Your Changes**
 
-   Write clear and concise commit messages.
-
-   ```bash
-   git commit -m "Add feature X to improve Y"
-   ```
+   Write clear and descriptive commit messages.
 
 7. **Push to Your Fork**
 
@@ -76,7 +71,7 @@ Pull requests are how you propose changes to the project. Here's how to submit o
 
 8. **Open a Pull Request**
 
-   Navigate to your fork on GitHub and click the "Compare & pull request" button. Provide a detailed description of your changes and reference any related issues.
+   Navigate to your fork on GitHub and click the "Compare & pull request" button.
 
 ## Development Setup
 
@@ -150,7 +145,7 @@ Please adhere to the following style guidelines to maintain code consistency:
 
 ## Commit Messages
 
-Write clear and descriptive commit messages. A good commit message should include:
+Write clear and concise commit messages. A good commit message should include:
 
 - **Title:** A brief summary of the changes.
 - **Body (optional):** A detailed description of the changes and the reasoning behind them.
@@ -168,4 +163,4 @@ Add integration tests for UserFolderRelocator
 
 By contributing, you agree that your contributions will be licensed under the [Non-Commercial Educational and Non-Profit License](LICENSE).
 
-Thank you for your contributions! 🙌
+Thank you for your contribution! 🙌
