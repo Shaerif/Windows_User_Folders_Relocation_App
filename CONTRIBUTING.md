@@ -26,7 +26,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming an
 
 ### Reporting Bugs
 
-If you find a bug in the application, please open an issue in the [GitHub Issues](https://github.com/yourusername/windows-user-folders-relocation-tool/issues) section with detailed information about the problem and steps to reproduce it.
+If you find a bug in the application, please open an issue in the [GitHub Issues](https://github.com/shaerif/windows-user-folders-relocation-tool/issues) section with detailed information about the problem and steps to reproduce it.
 
 ### Suggesting Enhancements
 
@@ -43,7 +43,7 @@ We welcome contributions in the form of pull requests. Here's how you can get st
 2. **Clone Your Fork**
 
    ```bash
-   git clone https://github.com/yourusername/windows-user-folders-relocation-tool.git
+   git clone https://github.com/shaerif/windows-user-folders-relocation-tool.git
    ```
 
 3. **Create a New Branch**
@@ -81,7 +81,7 @@ To set up the development environment, follow these steps:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/yourusername/windows-user-folders-relocation-tool.git
+   git clone https://github.com/shaerif/windows-user-folders-relocation-tool.git
    ```
 
 2. **Navigate to the Project Directory**

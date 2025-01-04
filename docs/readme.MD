@@ -37,7 +37,7 @@ A robust Python utility for safely relocating Windows user folders to different 
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/yourusername/windows-user-folders-relocation-tool.git
+git clone https://github.com/shaerif/windows-user-folders-relocation-tool.git
 ```
 
 2. **Install dependencies:**
