@@ -36,6 +36,7 @@ def parse_arguments():
                       help='Skip registry backup (not recommended)')
     parser.add_argument('--log-file', type=str,
                       help='Specify a custom log file location')
+    parser.add_argument('--username', type=str, help='Specify the Windows username for folder relocation')
     return parser.parse_args()
 
 def choose_drive():
@@ -100,9 +101,9 @@ class UserFolderRelocator:
         
         # Dynamic paths based on the user's home directory
         self.user_home = Path(os.path.expanduser("~"))
-        log_dir = self.user_home / "WindowsUserFoldersRelocation" / "logs"
-        backup_dir = self.user_home / "WindowsUserFoldersRelocation" / "backups"
+        log_dir = Path(__file__).parent / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
+        backup_dir = Path(__file__).parent / "backup"
         backup_dir.mkdir(parents=True, exist_ok=True)
         
         # Set the log file path
@@ -202,7 +203,7 @@ class UserFolderRelocator:
                 return (False, f"Insufficient disk space on {path.drive}.")
 
             return (True, "Path validation successful")
-        except Exception as e:
+        except Exception:
             self.logger.error("Error during path validation.")
             self.logger.error(traceback.format_exc())
             return (False, str(e))
@@ -245,11 +246,11 @@ class UserFolderRelocator:
             self.logger.info(f"Registry backup created: {backup_file}")
             self.logger.debug("Registry backup process completed successfully.")
             return True
-        except PermissionError as pe:
+        except PermissionError:
             self.logger.error("Permission denied during registry backup.")
             self.logger.error(traceback.format_exc())
             return False
-        except Exception as e:
+        except Exception:
             self.logger.error("Unexpected error during registry backup.")
             self.logger.error(traceback.format_exc())
             return False
@@ -290,15 +291,15 @@ class UserFolderRelocator:
             winreg.CloseKey(key)
             self.logger.info(f"Registry updated for {folder_name}: {new_path}")
             return True
-        except FileNotFoundError as fnf:
+        except FileNotFoundError:
             self.logger.error(f"Registry path not found for {folder_name}.")
             self.logger.error(traceback.format_exc())
             return False
-        except PermissionError as pe:
+        except PermissionError:
             self.logger.error("Permission denied while updating registry.")
             self.logger.error(traceback.format_exc())
             return False
-        except Exception as e:
+        except Exception:
             self.logger.error(f"Unexpected error while updating registry for {folder_name}.")
             self.logger.error(traceback.format_exc())
             return False
@@ -402,7 +403,7 @@ class UserFolderRelocator:
             self.logger.error(traceback.format_exc())
             return False
     
-    def relocate_folder(self, folder_name, new_base_path, skip_checksum=False, delete_files=False, use_new_location=False, username=None):
+    def relocate_folder(self, folder_name, new_base_path, username=None):
         self.logger.debug(f"Initiating relocation for folder: {folder_name}.")
         transaction = FolderRelocationTransaction()
         try:
@@ -415,9 +416,9 @@ class UserFolderRelocator:
             self.logger.debug(f"Fetching current path for folder: {folder_name}")
             if username:
                 if folder_name == "AppData":
-                    old_path = Path(f"C:/Users/{username}/AppData")
+                    old_path = Path.home() / "AppData"
                 elif folder_name == "Temp Folders":
-                    old_path = Path(f"C:/Users/{username}/AppData/Local/Temp")
+                    old_path = Path.home() / "AppData" / "Local" / "Temp"
                 elif folder_name == "OneDrive":
                     old_path = Path(f"C:/Users/{username}/OneDrive")
                 elif folder_name == "Public Folders":
@@ -430,9 +431,7 @@ class UserFolderRelocator:
 
             # Ensure new_base_path and username are not None
             if not new_base_path or not username:
-                self.logger.error("New base path or username is None.")
-                self.report["errors"].append("New base path or username is None.")
-                return False
+                raise ValueError("Either new_base_path or username is missing.")
 
             # Construct new path
             new_path = Path(new_base_path) / username / folder_name
@@ -483,8 +482,8 @@ class UserFolderRelocator:
             transaction.rollback()
             return False
         except Exception as e:
-            self.logger.error(f"Unexpected error during relocation of {folder_name}: {str(e)}")
-            self.logger.error(traceback.format_exc())
+            self.logger.error(f"Failed to relocate {folder_name}: {e}")
+            self.logger.debug(traceback.format_exc())
             self.report["errors"].append(str(e))
             transaction.rollback()
             return False
@@ -619,7 +618,7 @@ class BackupSelectionFrame(wx.Frame):
         self.GetSizer().Add(self.panel, 1, wx.EXPAND | wx.ALL, 5)
         
         self.SetSize((400, 400))
-        self.SetTitle("Restore from Backup")
+        self.SetTitle(RESTORE_BACKUP_LABEL)
         self.Centre()
     
     def load_backups(self):
@@ -697,6 +696,8 @@ class FeedbackFrame(wx.Frame):
         else:
             wx.MessageBox("Please enter your feedback before submitting.", "Error", wx.OK | wx.ICON_ERROR)
 
+RESTORE_BACKUP_LABEL = "Restore from Backup"
+
 class RelocationFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(RelocationFrame, self).__init__(*args, **kw)
@@ -754,7 +755,7 @@ class RelocationFrame(wx.Frame):
         self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
         self.sizer.Add(self.start_button, 0, wx.ALL | wx.CENTER, 5)
         
-        self.restore_button = wx.Button(self.panel, label="Restore from Backup")
+        self.restore_button = wx.Button(self.panel, label=RESTORE_BACKUP_LABEL)
         self.restore_button.Bind(wx.EVT_BUTTON, self.on_restore)
         self.sizer.Add(self.restore_button, 0, wx.ALL | wx.CENTER, 5)
         
@@ -764,6 +765,20 @@ class RelocationFrame(wx.Frame):
         
         self.progress_gauge = wx.Gauge(self.panel, range=100, size=(300, 25), style=wx.GA_HORIZONTAL)
         self.sizer.Add(self.progress_gauge, 0, wx.ALL | wx.EXPAND, 5)
+        
+        # Create a menu bar
+        menu_bar = wx.MenuBar()
+        
+        # Create the File menu
+        file_menu = wx.Menu()
+        exit_item = file_menu.Append(wx.ID_EXIT, "Exit\tCtrl+Q", "Exit the application")
+        menu_bar.Append(file_menu, "&File")
+        
+        # Set the menu bar
+        self.SetMenuBar(menu_bar)
+        
+        # Bind the exit event
+        self.Bind(wx.EVT_MENU, self.on_exit, exit_item)
         
         self.panel.SetSizerAndFit(self.sizer)
         self.SetSizerAndFit(wx.BoxSizer(wx.VERTICAL))
@@ -878,7 +893,7 @@ class RelocationFrame(wx.Frame):
     
     def on_restore(self, event):
         logging.debug("User clicked 'Restore from Backup'.")
-        backup_selection_frame = BackupSelectionFrame(self, title="Restore from Backup")
+        backup_selection_frame = BackupSelectionFrame(self, title=RESTORE_BACKUP_LABEL)
         backup_selection_frame.Show()
         logging.info("BackupSelectionFrame opened.")
     
@@ -904,6 +919,16 @@ class RelocationFrame(wx.Frame):
     
     def update_status(self, message):
         self.SetStatusText(message)
+    
+    def on_exit(self, event):
+        """Handle the exit event to close the application gracefully."""
+        self.Close()
+
+    def OnClose(self, event):
+        """Override the OnClose method to ensure graceful termination."""
+        # Perform any necessary cleanup here
+        self.Destroy()
+        wx.GetApp().ExitMainLoop()
 
 def secure_file_transfer(source, destination):
     # Add encryption for sensitive data
@@ -969,6 +994,20 @@ def main():
     app = RelocationApp(False)
     app.MainLoop()
 
+    args = parse_arguments()
+    if not args.target:
+        print("No --target provided. Please choose a drive:")
+        chosen_drive = choose_drive()
+        args.target = chosen_drive
+    if not args.username:
+        args.username = input("Enter the Windows username for folder relocation: ")
+    if args.folders:
+        folders = args.folders.split(',')
+    else:
+        folders = ['Documents','Downloads','Pictures','Music','Videos','Desktop']
+    relocator = UserFolderRelocator(dry_run=args.dry_run, skip_backup=args.no_backup, log_file=args.log_file)
+    for folder_name in folders:
+        relocator.relocate_folder(folder_name, args.target, username=args.username)
+
 if __name__ == "__main__":
     main()
-``` 

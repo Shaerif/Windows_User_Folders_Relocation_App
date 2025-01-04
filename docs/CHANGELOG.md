@@ -29,6 +29,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Improved error handling for file permission errors during relocation.
 - Improved error handling related to folder overwriting scenarios.
+- Removed unused local variables as flagged by SonarLint (python:S1481).
+- Reduced cognitive complexity in targeted functions (python:S3776).
+- Merged nested if statements (python:S1066).
+- Resolved issues with string formatting (python:S3457).
+- Replaced duplicated literal strings with constants (python:S1192).
+- Removed unused function parameters and variables (python:S1172).
+- Renamed or removed references to undefined functions.
 
 ## [1.1.0] - 2024-04-27
 
