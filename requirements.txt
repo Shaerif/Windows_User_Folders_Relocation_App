@@ -4,7 +4,11 @@ pywin32>=305
 wmi>=1.5.1
 # wmi offers a Pythonic interface to Windows Management Instrumentation
 argparse
+# argparse is used for parsing command-line arguments
 wxPython
+# wxPython is used for the GUI interface
+uuid
+# uuid is used for generating unique run identifiers
 
 # System utilities
 pathlib>=1.0.1
@@ -23,3 +27,7 @@ wxPython>=4.1.1
 # PyInstaller for creating executables
 pyinstaller>=4.5
 # PyInstaller is used to compile the script into an executable format
+
+# Cryptography for secure file transfer
+cryptography>=3.4.7
+# cryptography is used for encrypting sensitive data during file transfer

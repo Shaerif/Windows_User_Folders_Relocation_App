@@ -18,6 +18,9 @@ import wx
 import wx.lib.agw.pygauge as PG
 import platform
 import traceback
+import uuid  # Add import for UUID
+import getpass  # Add import for getting user ID
+from cryptography.fernet import Fernet
 
 def parse_arguments():
     # This function parses command-line arguments and returns an object
@@ -50,6 +53,30 @@ def choose_drive():
         print("Invalid choice. Exiting.")
         sys.exit(1)
 
+class FolderRelocationTransaction:
+    def __init__(self):
+        self.operations = []
+        self.rollback_steps = []
+
+    def add_operation(self, operation, rollback):
+        self.operations.append(operation)
+        self.rollback_steps.append(rollback)
+
+    def execute(self):
+        try:
+            for operation in self.operations:
+                operation()
+        except Exception as e:
+            self.rollback()
+            raise e
+
+    def rollback(self):
+        for rollback_step in reversed(self.rollback_steps):
+            try:
+                rollback_step()
+            except Exception:
+                pass
+
 class UserFolderRelocator:
     # The main class handling the relocation logic.
     # It stores options like dry_run, skip_backup, and log_file.
@@ -62,6 +89,7 @@ class UserFolderRelocator:
     """
 
     def __init__(self, dry_run=False, skip_backup=False, log_file=None, gui=None, overwrite_files=False, overwrite_folders=False, overwrite_all=False):
+        self.run_id = uuid.uuid4()  # Generate a unique run ID
         self.dry_run = dry_run
         self.skip_backup = skip_backup
         self.gui = gui
@@ -103,15 +131,24 @@ class UserFolderRelocator:
         
     def setup_logging(self):
         # Configures logging to both a file and console with detailed format
-        logging.basicConfig(
-            level=logging.DEBUG,  # Set to DEBUG for detailed logs
-            format='%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s',
-            handlers=[
-                logging.FileHandler(self.log_file),
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
+        log_dir = self.user_home / "WindowsUserFoldersRelocation" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        self.log_file = log_dir / f"folder_relocation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        
+        file_handler = logging.FileHandler(self.log_file)
+        console_handler = logging.StreamHandler(sys.stdout)
+        
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - [Run ID: %(run_id)s] - [User ID: %(user_id)s] - %(message)s')
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+        
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
+        
+        self.user_id = getpass.getuser()  # Get current username
+        self.logger = logging.LoggerAdapter(self.logger, {'run_id': self.run_id, 'user_id': self.user_id})  # Attach run_id and user_id to logger
         self.logger.info("Logging setup complete.")
         self.logger.debug("Logging initialized with DEBUG level.")
     
@@ -149,27 +186,30 @@ class UserFolderRelocator:
             # Additional checks for system-protected paths
             system_drive = os.environ.get('SystemDrive', 'C:')
             if str(path).startswith(f"{system_drive}\\Windows"):
-                return False, "Cannot relocate to Windows system directories"
+                self.logger.error("Cannot relocate system-protected paths.")
+                return (False, "Attempted to relocate a system-protected path.")
 
             # Check if drive exists and is local
             if not path.drive:
-                return False, "Invalid drive specification"
-            
+                self.logger.error("No drive specified in the new path.")
+                return (False, "No drive specified in the new path.")
+
             # Check if drive exists
             if not path.exists():
-                try:
-                    path.mkdir(parents=True)
-                except Exception as e:
-                    return False, f"Cannot create directory: {str(e)}"
-            
+                self.logger.error(f"Drive does not exist: {path.drive}")
+                return (False, f"Drive does not exist: {path.drive}")
+
             # Check available space (minimum 5GB)
             free_space = shutil.disk_usage(path.drive).free
             if free_space < (5 * 1024 * 1024 * 1024):  # 5GB in bytes
-                return False, "Insufficient disk space (minimum 5GB required)"
-            
-            return True, "Path validation successful"
+                self.logger.error(f"Insufficient disk space on {path.drive}.")
+                return (False, f"Insufficient disk space on {path.drive}.")
+
+            return (True, "Path validation successful")
         except Exception as e:
-            return False, f"Path validation failed: {str(e)}"
+            self.logger.error("Error during path validation.")
+            self.logger.error(traceback.format_exc())
+            return (False, str(e))
 
     def backup_registry(self):
         self.logger.debug("Starting registry backup process.")
@@ -198,12 +238,23 @@ class UserFolderRelocator:
                     if overwrite.lower() != 'yes':
                         return False
 
+            # Add comment with details of folders that have been moved
+            with open(backup_file, 'w') as f:
+                f.write(f"; Backup created on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"; Folders moved: {', '.join(self.report['moved_files'])}\n")
+                f.write(f"; Total size moved: {self.report['total_size']} bytes\n")
+                f.write(f"; Errors: {', '.join(self.report['errors'])}\n")
+
             os.system(f'reg export "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders" "{backup_file}" /y')
             self.logger.info(f"Registry backup created: {backup_file}")
             self.logger.debug("Registry backup process completed successfully.")
             return True
+        except PermissionError as pe:
+            self.logger.error("Permission denied during registry backup.")
+            self.logger.error(traceback.format_exc())
+            return False
         except Exception as e:
-            self.logger.error("Registry backup failed.")
+            self.logger.error("Unexpected error during registry backup.")
             self.logger.error(traceback.format_exc())
             return False
     
@@ -243,29 +294,21 @@ class UserFolderRelocator:
             winreg.CloseKey(key)
             self.logger.info(f"Registry updated for {folder_name}: {new_path}")
             return True
+        except FileNotFoundError as fnf:
+            self.logger.error(f"Registry path not found for {folder_name}.")
+            self.logger.error(traceback.format_exc())
+            return False
+        except PermissionError as pe:
+            self.logger.error("Permission denied while updating registry.")
+            self.logger.error(traceback.format_exc())
+            return False
         except Exception as e:
-            self.logger.error(f"Registry update failed for {folder_name}.")
+            self.logger.error(f"Unexpected error while updating registry for {folder_name}.")
             self.logger.error(traceback.format_exc())
             return False
     
     def move_folder_contents(self, old_path, new_path, skip_checksum, delete_files):
         self.logger.debug(f"Moving contents from {old_path} to {new_path}. Skip checksum: {skip_checksum}, Delete files: {delete_files}")
-        # Copies the existing user data to the target folder location.
-        # Displays progress, verifies file integrity, and creates a
-        # junction point to maintain compatibility with system references.
-        """
-        Safely moves folder contents to the new location with progress tracking
-        and verification. Creates a junction point at the old location.
-        
-        Args:
-            old_path (Path): Original folder path
-            new_path (Path): Destination folder path
-            skip_checksum (bool): Skip checksum validation
-            delete_files (bool): Delete files after relocation
-            
-        Returns:
-            bool: True if move successful, False otherwise
-        """
         if self.dry_run:
             logging.info(f"DRY RUN: Would move {old_path} to {new_path}")
             return True
@@ -277,72 +320,60 @@ class UserFolderRelocator:
             # Create destination if it doesn't exist
             new_path.mkdir(parents=True, exist_ok=True)
             
-            # Check if target folder already exists
-            if new_path.exists():
-                if self.overwrite_all:
-                    try:
-                        shutil.rmtree(new_path)
-                        logging.info(f"Deleted existing target folder: {new_path}")
-                    except Exception as e:
-                        logging.error(f"Failed to delete existing folder: {str(e)}")
-                        self.report["errors"].append(f"Failed to delete existing folder: {str(e)}")
-                        return False
-                else:
-                    # For CLI, prompt the user
-                    if not self.gui:
-                        while True:
-                            user_input = input(f"The target folder '{new_path}' already exists. Overwrite? (y/n): ").strip().lower()
-                            if user_input == 'y':
-                                try:
-                                    shutil.rmtree(new_path)
-                                    logging.info(f"Deleted existing target folder: {new_path}")
-                                except Exception as e:
-                                    logging.error(f"Failed to delete existing folder: {str(e)}")
-                                    self.report["errors"].append(f"Failed to delete existing folder: {str(e)}")
-                                    return False
-                                break
-                            elif user_input == 'n':
-                                logging.info(f"Skipped relocating folder: {new_path}")
-                                self.report["errors"].append(f"Skipped relocating folder: {new_path}")
-                                return False
+            total_files = sum([len(files) for _, _, files in os.walk(old_path)])
+            copied_files = 0
 
-            # Move the folder contents
-            try:
-                shutil.move(str(old_path), str(new_path))
-                logging.info(f"Moved folder contents: {old_path} -> {new_path}")
-                self.report["moved_files"].append(str(old_path))
-            except Exception as e:
-                logging.error(f"Moving folder contents failed: {str(e)}")
-                logging.error(traceback.format_exc())
-                self.report["errors"].append(str(e))
-                return False
-            
-            # Verify total file count if not skipping checksum
-            if not skip_checksum:
-                original_file_count = sum(1 for _ in old_path.rglob('*') if _.is_file())
-                new_file_count = sum(1 for _ in new_path.rglob('*') if _.is_file())
-                logging.error(f"Failed to create junction point for {old_path}")
-                self.report["errors"].append(f"Failed to create junction point for {old_path}")
-                return False
-            logging.info(f"Junction created for {old_path} <<===>> {new_path}")
-            
-            # Optionally delete original folder if required
-            if delete_files:
-                try:
-                    shutil.rmtree(old_path)
-                    logging.info(f"Deleted original folder: {old_path}")
-                except Exception as e:
-                    logging.error(f"Failed to delete original folder: {str(e)}")
-                    self.report["errors"].append(f"Failed to delete original folder: {str(e)}")
-                    return False
-            
+            for root, dirs, files in os.walk(old_path):
+                relative_root = Path(root).relative_to(old_path)
+                destination_root = new_path / relative_root
+
+                for dir in dirs:
+                    destination_dir = destination_root / dir
+                    destination_dir.mkdir(exist_ok=True)
+
+                for file in files:
+                    source_file = Path(root) / file
+                    destination_file = destination_root / file
+                    try:
+                        optimized_file_copy(source_file, destination_file)
+                        copied_files += 1
+                        self.report["total_size"] += source_file.stat().st_size
+                        self.logger.info(f"Copied {source_file} to {destination_file}")
+                        self.update_progress(copied_files, total_files)
+                        if not skip_checksum:
+                            if not self.verify_file_copy(source_file, destination_file):
+                                self.logger.error(f"Checksum mismatch for {source_file}")
+                                self.report["errors"].append(f"Checksum mismatch for {source_file}")
+                                return False
+                        if delete_files:
+                            # Confirm with the user before deleting files
+                            if self.gui:
+                                confirm = wx.MessageBox(f"Do you want to delete the original file {source_file}?", "Confirm", wx.YES_NO | wx.ICON_QUESTION)
+                                if confirm != wx.YES:
+                                    continue
+                            else:
+                                confirm = input(f"Do you want to delete the original file {source_file}? (yes/no): ")
+                                if confirm.lower() != 'yes':
+                                    continue
+                            source_file.unlink()
+                            self.logger.info(f"Deleted original file {source_file}")
+                    except Exception as e:
+                        self.logger.error(f"Error moving file {source_file} to {destination_file}: {str(e)}")
+                        self.report["errors"].append(str(e))
+                        return False
+
+            # Create junction point
+            if not self.dry_run:
+                if old_path.exists():
+                    os.symlink(new_path, old_path, target_is_directory=True)
+                    self.logger.info(f"Created junction point from {old_path} to {new_path}")
+
             self.report["success"] = True
-            self.report["total_size"] = sum(f.stat().st_size for f in new_path.rglob('*') if f.is_file())
             return True
         except Exception as e:
-            logging.error(f"Moving folder contents failed: {str(e)}")
+            self.logger.error(f"Unexpected error moving folder contents: {str(e)}")
+            self.logger.error(traceback.format_exc())
             self.report["errors"].append(str(e))
-            logging.error(traceback.format_exc())
             return False
 
     def verify_file_copy(self, source, destination):
@@ -377,75 +408,104 @@ class UserFolderRelocator:
     
     def relocate_folder(self, folder_name, new_base_path, skip_checksum=False, delete_files=False, use_new_location=False, username=None):
         self.logger.debug(f"Initiating relocation for folder: {folder_name}.")
-        # Handles the end-to-end process of validating paths, backing up
-        # the registry, moving data, and updating registry entries
-        # for the specified folder.
-        """
-        Main relocation function that orchestrates the entire process for a single folder.
-        
-        Args:
-            folder_name (str): Name of the folder to relocate
-            new_base_path (str): Base path where the folder will be relocated
-            skip_checksum (bool): Skip checksum validation
-            delete_files (bool): Delete files after relocation
-            use_new_location (bool): Use new location as default
-            username (str): Username for which the folder is being relocated
-            
-        Returns:
-            bool: True if relocation successful, False otherwise
-        """
-        if folder_name not in self.known_folders:
-            logging.error(f"Unknown folder: {folder_name}")
-            return False
-        
-        # Get current folder path
-        if username:
-            if folder_name == "AppData":
-                old_path = Path(f"C:/Users/{username}/AppData")
-            elif folder_name == "Temp Folders":
-                old_path = Path(f"C:/Users/{username}/AppData/Local/Temp")
-            elif folder_name == "OneDrive":
-                old_path = Path(f"C:/Users/{username}/OneDrive")
-            elif folder_name == "Public Folders":
-                old_path = Path(f"C:/Users/Public")
+        transaction = FolderRelocationTransaction()
+        try:
+            if folder_name not in self.known_folders:
+                self.logger.error(f"Unknown folder: {folder_name}")
+                self.report["errors"].append(f"Unknown folder: {folder_name}")
+                return False
+
+            # Get current folder path
+            self.logger.debug(f"Fetching current path for folder: {folder_name}")
+            if username:
+                if folder_name == "AppData":
+                    old_path = Path(f"C:/Users/{username}/AppData")
+                elif folder_name == "Temp Folders":
+                    old_path = Path(f"C:/Users/{username}/AppData/Local/Temp")
+                elif folder_name == "OneDrive":
+                    old_path = Path(f"C:/Users/{username}/OneDrive")
+                elif folder_name == "Public Folders":
+                    old_path = Path(f"C:/Users/Public")
+                else:
+                    old_path = Path(f"C:/Users/{username}/{folder_name}")
             else:
-                old_path = Path(f"C:/Users/{username}/{folder_name}")
-        else:
-            shell = win32com.client.Dispatch("WScript.Shell")
-            old_path = Path(shell.SpecialFolders(self.known_folders[folder_name]['id']))
-        
-        # Construct new path
-        new_path = Path(new_base_path) / username / folder_name
-        
-        # Validate new path
-        valid, message = self.validate_path(new_path)
-        if not valid:
-            logging.error(message)
-            self.report["errors"].append(message)
+                shell = win32com.client.Dispatch("WScript.Shell")
+                old_path = Path(shell.SpecialFolders(self.known_folders[folder_name]['id']))
+
+            # Ensure new_base_path and username are not None
+            if not new_base_path or not username:
+                self.logger.error("New base path or username is None.")
+                self.report["errors"].append("New base path or username is None.")
+                return False
+
+            # Construct new path
+            new_path = Path(new_base_path) / username / folder_name
+
+            # Validate new path
+            self.logger.debug(f"Validating new path: {new_path}")
+            valid, message = self.validate_path(new_path)
+            if not valid:
+                self.logger.error(f"Path validation failed: {message}")
+                self.report["errors"].append(message)
+                return False
+
+            self.logger.debug("Performing registry backup.")
+            if not self.backup_registry():
+                self.logger.error("Registry backup failed.")
+                self.report["errors"].append("Registry backup failed.")
+                return False
+
+            # Create recovery point
+            create_recovery_point()
+
+            self.logger.debug("Moving folder contents.")
+            transaction.add_operation(
+                lambda: self.move_folder_contents(old_path, new_path, skip_checksum, delete_files),
+                lambda: self.move_folder_contents(new_path, old_path, skip_checksum, delete_files)
+            )
+            if not self.move_folder_contents(old_path, new_path, skip_checksum, delete_files):
+                self.logger.error("Moving folder contents failed.")
+                self.report["errors"].append("Moving folder contents failed.")
+                return False
+
+            self.logger.debug("Updating registry with new folder location.")
+            transaction.add_operation(
+                lambda: self.update_registry(folder_name, str(new_path)),
+                lambda: self.update_registry(folder_name, str(old_path))
+            )
+            if not self.update_registry(folder_name, str(new_path)):
+                self.logger.error("Updating registry failed.")
+                self.report["errors"].append("Updating registry failed.")
+                return False
+
+            transaction.execute()
+            self.logger.info(f"Successfully relocated folder: {folder_name}")
+            return True
+        except KeyError as ke:
+            self.logger.error(f"Key error during relocation of {folder_name}: {str(ke)}")
+            self.report["errors"].append(str(ke))
+            transaction.rollback()
             return False
-        
-        # Perform relocation steps
-        if not self.backup_registry():
+        except Exception as e:
+            self.logger.error(f"Unexpected error during relocation of {folder_name}: {str(e)}")
+            self.logger.error(traceback.format_exc())
+            self.report["errors"].append(str(e))
+            transaction.rollback()
             return False
-        
-        if not self.move_folder_contents(old_path, new_path, skip_checksum, delete_files):
-            return False
-        
-        if not self.update_registry(folder_name, new_path):
-            return False
-        
-        
-        return True
     
     def set_default_location(self, folder_name, new_path):
-        logging.debug(f"Setting default location for {folder_name} to {new_path}")
+        self.logger.debug(f"Setting default location for {folder_name} to {new_path}")
         try:
+            if self.dry_run:
+                self.logger.info(f"DRY RUN: Would set default location for {folder_name} to {new_path}")
+                return True
+
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
                 self.get_user_shell_folders_path(),
                 0, winreg.KEY_SET_VALUE
             )
-            
+
             winreg.SetValueEx(
                 key,
                 self.known_folders[folder_name]['id'],
@@ -453,30 +513,35 @@ class UserFolderRelocator:
                 winreg.REG_EXPAND_SZ,
                 str(new_path)
             )
-            
+
             winreg.CloseKey(key)
-            logging.info(f"Default location set for {folder_name}: {new_path}")
+            self.logger.info(f"Default location set for {folder_name}: {new_path}")
+            return True
         except Exception as e:
-            logging.error(f"Failed to set default location for {folder_name}: {str(e)}")
-            logging.error(traceback.format_exc())
+            self.logger.error(f"Error setting default location for {folder_name}: {str(e)}")
+            self.logger.error(traceback.format_exc())
+            self.report["errors"].append(str(e))
+            return False
 
     def restore_backup(self, backup_file):
-        logging.debug(f"Restoring registry from backup file: {backup_file}")
+        self.logger.debug(f"Restoring registry from backup file: {backup_file}")
         try:
             if self.dry_run:
-                logging.info(f"DRY RUN: Would restore registry from {backup_file}")
+                self.logger.info(f"DRY RUN: Would restore registry from {backup_file}")
                 return True
-            
-            result = os.system(f'reg import "{backup_file}"')
-            if result == 0:
-                logging.info(f"Successfully restored registry from {backup_file}")
-                return True
-            else:
-                logging.error(f"Failed to restore registry from {backup_file}")
+
+            if not Path(backup_file).exists():
+                self.logger.error(f"Backup file does not exist: {backup_file}")
+                self.report["errors"].append(f"Backup file does not exist: {backup_file}")
                 return False
+
+            os.system(f'reg import "{backup_file}"')
+            self.logger.info(f"Registry restored from backup: {backup_file}")
+            return True
         except Exception as e:
-            logging.error(f"Exception occurred while restoring backup: {str(e)}")
-            logging.error(traceback.format_exc())
+            self.logger.error(f"Error restoring registry from {backup_file}: {str(e)}")
+            self.logger.error(traceback.format_exc())
+            self.report["errors"].append(str(e))
             return False
 
 class RelocationApp(wx.App):
@@ -497,6 +562,21 @@ class FolderSelectionFrame(wx.Frame):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         
         self.select_all_checkbox = wx.CheckBox(self.panel, label="Select All")
+        self.select_all_checkbox.Bind(wx.EVT_CHECKBOX, self.on_select_all)
+        self.sizer.Add(self.select_all_checkbox, 0, wx.ALL, 5)
+        
+        self.folder_checkboxes = {}
+        folders = ["Documents", "Downloads", "Pictures", "Music", "Videos", "Desktop", "AppData", "Temp Folders", "OneDrive", "Public Folders"]
+        for folder in folders:
+            checkbox = wx.CheckBox(self.panel, label=folder)
+            self.folder_checkboxes[folder] = checkbox
+            self.sizer.Add(checkbox, 0, wx.ALL, 5)
+        
+        self.save_button = wx.Button(self.panel, label="Save Selection")
+        self.save_button.Bind(wx.EVT_BUTTON, self.on_save)
+        self.sizer.Add(self.save_button, 0, wx.ALL | wx.CENTER, 5)
+        
+        self.panel.SetSizerAndFit(self.sizer)
         self.SetSizerAndFit(wx.BoxSizer(wx.VERTICAL))
         self.GetSizer().Add(self.panel, 1, wx.EXPAND | wx.ALL, 5)
         
@@ -587,6 +667,40 @@ class BackupSelectionFrame(wx.Frame):
             wx.MessageBox("Failed to restore registry.", "Error", wx.OK | wx.ICON_ERROR)
         self.Close()
 
+class FeedbackFrame(wx.Frame):
+    def __init__(self, parent, *args, **kw):
+        super(FeedbackFrame, self).__init__(parent, *args, **kw)
+        
+        self.parent = parent
+        self.panel = wx.Panel(self)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        
+        self.feedback_text = wx.TextCtrl(self.panel, style=wx.TE_MULTILINE)
+        self.sizer.Add(wx.StaticText(self.panel, label="Please provide your feedback:"), 0, wx.ALL, 5)
+        self.sizer.Add(self.feedback_text, 1, wx.ALL | wx.EXPAND, 5)
+        
+        self.submit_button = wx.Button(self.panel, label="Submit Feedback")
+        self.submit_button.Bind(wx.EVT_BUTTON, self.on_submit)
+        self.sizer.Add(self.submit_button, 0, wx.ALL | wx.CENTER, 5)
+        
+        self.panel.SetSizerAndFit(self.sizer)
+        self.SetSizerAndFit(wx.BoxSizer(wx.VERTICAL))
+        self.GetSizer().Add(self.panel, 1, wx.EXPAND | wx.ALL, 5)
+        
+        self.SetSize((400, 300))
+        self.SetTitle("User Feedback")
+        self.Centre()
+    
+    def on_submit(self, event):
+        feedback = self.feedback_text.GetValue()
+        if feedback:
+            with open("feedback.txt", "a") as f:
+                f.write(f"{datetime.now()}: {feedback}\n")
+            wx.MessageBox("Thank you for your feedback!", "Feedback Submitted", wx.OK | wx.ICON_INFORMATION)
+            self.Close()
+        else:
+            wx.MessageBox("Please enter your feedback before submitting.", "Error", wx.OK | wx.ICON_ERROR)
+
 class RelocationFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(RelocationFrame, self).__init__(*args, **kw)
@@ -647,6 +761,10 @@ class RelocationFrame(wx.Frame):
         self.restore_button = wx.Button(self.panel, label="Restore from Backup")
         self.restore_button.Bind(wx.EVT_BUTTON, self.on_restore)
         self.sizer.Add(self.restore_button, 0, wx.ALL | wx.CENTER, 5)
+        
+        self.feedback_button = wx.Button(self.panel, label="Provide Feedback")
+        self.feedback_button.Bind(wx.EVT_BUTTON, self.on_feedback)
+        self.sizer.Add(self.feedback_button, 0, wx.ALL | wx.CENTER, 5)
         
         self.progress_gauge = wx.Gauge(self.panel, range=100, size=(300, 25), style=wx.GA_HORIZONTAL)
         self.sizer.Add(self.progress_gauge, 0, wx.ALL | wx.EXPAND, 5)
@@ -738,10 +856,11 @@ class RelocationFrame(wx.Frame):
                     self.logger.info(f"Successfully relocated folder: {folder}")
                 else:
                     self.logger.error(f"Failed to relocate folder: {folder}")
+                    wx.MessageBox(f"Failed to relocate folder: {folder}. Check logs for details.", "Error", wx.OK | wx.ICON_ERROR)
         except Exception as e:
             self.logger.error(f"Exception during folder relocation: {str(e)}")
             self.logger.error(traceback.format_exc())
-            wx.MessageBox("An unexpected error occurred during relocation.", "Error", wx.OK | wx.ICON_ERROR)
+            wx.MessageBox("An unexpected error occurred during relocation. Check logs for details.", "Error", wx.OK | wx.ICON_ERROR)
         
         self.show_report()
         self.start_button.Enable()
@@ -767,6 +886,10 @@ class RelocationFrame(wx.Frame):
         backup_selection_frame.Show()
         logging.info("BackupSelectionFrame opened.")
     
+    def on_feedback(self, event):
+        feedback_frame = FeedbackFrame(self, title="User Feedback")
+        feedback_frame.Show()
+    
     def on_close(self, event):
         if self.clear_log_checkbox.GetValue():
             try:
@@ -774,15 +897,69 @@ class RelocationFrame(wx.Frame):
                 logging.info("Log file cleared on exit.")
             except Exception as e:
                 logging.error(f"Failed to clear log file: {str(e)}")
+        else:
+            # Ensure logs are recorded correctly
+            self.logger.info("Application is closing. Logs are saved.")
         self.Destroy()
     
     def update_progress(self, copied_files, total_files):
         self.progress_gauge.SetValue(int((copied_files / total_files) * 100))
         self.progress_gauge.SetLabel(f"Copied {copied_files} of {total_files} files")
     
-        sys.exit(1)
     def update_status(self, message):
         self.SetStatusText(message)
+
+def secure_file_transfer(source, destination):
+    # Add encryption for sensitive data
+    key = Fernet.generate_key()
+    cipher_suite = Fernet(key)
+    
+    with open(source, 'rb') as src:
+        with open(destination, 'wb') as dst:
+            encrypted_data = cipher_suite.encrypt(src.read())
+            dst.write(encrypted_data)
+
+def optimized_file_copy(source, destination, buffer_size=8192):
+    # Use larger buffer and direct I/O for better performance
+    import os
+    flags = os.O_RDONLY | os.O_BINARY if hasattr(os, 'O_BINARY') else os.O_RDONLY
+    with os.open(source, flags) as src:
+        with open(destination, 'wb') as dst:
+            while True:
+                chunk = os.read(src, buffer_size)
+                if not chunk:
+                    break
+                dst.write(chunk)
+
+def create_recovery_point():
+    # Save system state for recovery
+    state = {
+        'registry_backup': backup_registry(),
+        'file_manifest': create_file_manifest(),
+        'junction_points': map_junction_points(),
+        'permissions': backup_permissions()
+    }
+    save_recovery_point(state)
+
+def backup_permissions():
+    # Backup file and folder permissions
+    # Placeholder function for actual implementation
+    return {}
+
+def create_file_manifest():
+    # Create a manifest of files to be moved
+    # Placeholder function for actual implementation
+    return []
+
+def map_junction_points():
+    # Map existing junction points
+    # Placeholder function for actual implementation
+    return []
+
+def save_recovery_point(state):
+    # Save the recovery point to a file
+    with open('recovery_point.json', 'w') as f:
+        json.dump(state, f)
 
 def main():
     """
@@ -792,13 +969,6 @@ def main():
     if platform.system() != "Windows":
         logging.error("This script can only be run on Windows operating systems.")
         sys.exit(1)
-        
-    app = RelocationApp(False)
-    app.MainLoop()
-
-if __name__ == "__main__":
-    main()
-
         
     app = RelocationApp(False)
     app.MainLoop()

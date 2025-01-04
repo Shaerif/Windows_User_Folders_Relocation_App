@@ -4,27 +4,36 @@ import ctypes
 import sys
 import os
 import platform
+import uuid  # Add import for UUID
+import getpass  # Add import for getting user ID
 from folder_relocator import UserFolderRelocator, parse_arguments  # Assuming module name is folder_relocator.py
 
 def setup_cli_logging():
     logging.basicConfig(
         level=logging.DEBUG,  # Set to DEBUG for detailed logs
-        format='%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - [Run ID: %(run_id)s] - [User ID: %(user_id)s] - %(message)s',  # Update format to include user_id
         handlers=[
             logging.FileHandler("cli_relocator.log"),
             logging.StreamHandler(sys.stdout)
         ]
     )
     logger = logging.getLogger(__name__)
+    user_id = getpass.getuser()  # Get current user ID
+    run_id = str(uuid.uuid4())  # Generate a unique run ID
+    logger = logging.LoggerAdapter(logger, {'run_id': run_id, 'user_id': user_id})  # Attach run_id and user_id to logger
     logger.info("CLI logging setup complete.")
     logger.debug("CLI logger initialized with DEBUG level.")
     return logger
 
 def run_cli():
     logger = logging.getLogger(__name__)
+    user_id = getpass.getuser()  # Get current user ID
+    run_id = str(uuid.uuid4())  # Generate a unique run ID
+    logger = logging.LoggerAdapter(logger, {'run_id': run_id, 'user_id': user_id})  # Attach run_id and user_id to logger
     logger.debug("Starting CLI run.")
     
     # OS check to ensure the script runs only on Windows
+    logger.debug("Checking operating system.")
     if platform.system() != "Windows":
         logger.error("Unsupported operating system. Exiting CLI.")
         print("Error: This script can only be run on Windows operating systems.")
@@ -34,6 +43,7 @@ def run_cli():
     args = parse_arguments()
     logger.info(f"Arguments received: {args}")
     
+    logger.debug("Initializing UserFolderRelocator instance.")
     relocator = UserFolderRelocator(
         dry_run=args.dry_run,
         skip_backup=args.no_backup,
@@ -44,6 +54,7 @@ def run_cli():
     )
     logger.debug("UserFolderRelocator instance created.")
     
+    logger.debug("Checking administrative privileges.")
     if not relocator.is_admin():
         logger.warning("Script not running as administrator. Attempting to elevate privileges.")
         # Re-run the script with admin privileges
@@ -64,6 +75,7 @@ def run_cli():
         sys.exit(1)
     
     target_path = Path(args.target).resolve()
+    logger.debug(f"Resolved target path: {target_path}")
     valid, message = relocator.validate_path(target_path)
     if not valid:
         logger.error(f"Invalid target path: {message}")
@@ -71,10 +83,12 @@ def run_cli():
         sys.exit(1)
     logger.info(f"Target path validated: {target_path}")
     
+    logger.debug("Determining folders to move.")
     folders_to_move = args.folders.split(',') if args.folders else relocator.known_folders.keys()
     logger.debug(f"Folders to move: {folders_to_move}")
     
     for folder in folders_to_move:
+        logger.debug(f"Processing folder: {folder}")
         if folder not in relocator.known_folders:
             logger.warning(f"Unknown folder: {folder}, skipping.")
             print(f"Unknown folder: {folder}, skipping")
@@ -98,8 +112,8 @@ def run_cli():
             logger.error(traceback.format_exc())
             print(f"Failed to relocate {folder} due to an unexpected error.")
     
-    report = relocator.report
     logger.debug("Generating relocation report.")
+    report = relocator.report
     report_message = f"Relocation {'succeeded' if report['success'] else 'failed'}.\n"
     report_message += f"Total files moved: {len(report['moved_files'])}\n"
     report_message += f"Total size moved: {report['total_size']} bytes\n"

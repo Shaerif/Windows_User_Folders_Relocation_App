@@ -64,3 +64,54 @@
 
 12. **Generate Detailed Report**
     - Update the script to generate a detailed report of the relocation process in both the GUI and CLI, including files moved, size of files, and any errors encountered.
+
+13. **Double-check Each Release**
+    - Ensure files are safely deleted only after user confirmation and checksum verification for each release.
+
+14. **Add Transaction Management System**
+    - Implement a transaction management system to ensure atomic operations and proper rollback mechanisms.
+
+15. **Implement Secure File Transfer**
+    - Add encryption for sensitive data during file transfer.
+
+16. **Optimize File Operations**
+    - Use larger buffer sizes and direct I/O for better performance during file operations.
+
+17. **Implement Recovery System**
+    - Create a recovery point to save the system state for recovery in case of failures.
+
+18. **Enhance User Feedback**
+    - Provide real-time validation of drive space, detailed error messages, and a preview of changes before execution.
+
+19. **Add Advanced Features**
+    - Implement support for file exclusion patterns, OneDrive integration, multiple user profiles, and backup compression.
+
+20. **Implement Profile Management**
+    - Add save/load user preferences and profile management features.
+
+21. **Add Detailed Analytics**
+    - Implement logging analysis tools and periodic verification of relocated folders.
+
+22. **Enhance Customization Options**
+    - Provide more customization options for users, including default configurations and advanced settings.
+
+# Roadmap
+
+## Upcoming Features
+
+- 🧪 **Unit Testing**
+  - Implement comprehensive tests for all modules.
+  
+- 🌐 **Localization**
+  - Add support for multiple languages in the GUI.
+  
+- 📈 **Performance Optimization**
+  - Enhance the speed of folder relocation operations.
+
+## Future Enhancements
+
+- ☁️ **Cloud Integration**
+  - Enable backing up folders to cloud storage services.
+  
+- 🔒 **Advanced Security**
+  - Implement encryption for sensitive data during relocation.

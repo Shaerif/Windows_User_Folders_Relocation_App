@@ -1,29 +1,24 @@
-# Non-Commercial Educational and Non-Profit License
+# License
 
-## Permitted Use
+Non-Commercial Educational and Non-Profit License
 
-Free for non-commercial educational purposes and non-profit organizations working for social good.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-## Prohibited Use
+* The Software may not be used for commercial purposes.
+* Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
 
-The software, tool, or any creation covered by this license cannot be used for commercial purposes, including but not limited to:
+## Disclaimer
 
-- Creating courses, tutorials, or materials intended for sale.
-- Use in paid workshops, classes, or training programs.
-- Incorporation into commercial software, tools, or services.
-
-## Modification
-
-Modification of the software, tool, or creation is not allowed without explicit written consent from the author.
-
-## Redistribution
-
-Redistribution of the software, tool, or creation in any form, modified or unmodified, is prohibited without explicit written consent from the author.
-
-## Liability and Warranty
-
-The software, tool, or creation is provided "as is" without any warranties, express or implied. The author is not liable for any damages arising from the use of the software, tool, or creation.
-
-## Additional Disclaimer
-
-This license is not OSI-approved. For any commercial or extended usage beyond the stated terms, please contact the author for explicit written consent.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

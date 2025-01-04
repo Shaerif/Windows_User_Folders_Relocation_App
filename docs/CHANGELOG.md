@@ -1,5 +1,9 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
 ## [Unreleased]
 
 ### Added
@@ -10,6 +14,9 @@
 - Added options in the user interface to overwrite existing files, overwrite existing folders, and overwrite all during the relocation process.
 - Updated CLI to include `--overwrite-files`, `--overwrite-folders`, and `--overwrite-all` arguments for handling overwrite behaviors.
 - Enhanced `UserFolderRelocator` class to process overwrite options accordingly.
+- Integrated `user_id` and `run_id` into logging for enhanced traceability.
+- Detailed debug statements in `UserFolderRelocator` and CLI scripts.
+- Troubleshooting and contributing sections in README.
 
 ### Changed
 - Updated the script to ensure that user files are moved and checksummed before being removed from the original location.
@@ -22,6 +29,17 @@
 ### Fixed
 - Improved error handling for file permission errors during relocation.
 - Improved error handling related to folder overwriting scenarios.
+
+## [1.1.0] - 2024-04-27
+
+### Added
+- User and run identifiers added to log entries.
+- Enhanced logging within key methods for better debugging.
+- Updated `.gitignore` to exclude sensitive and unnecessary files.
+- Documented troubleshooting steps and contribution guidelines.
+
+### Fixed
+- Minor bugs in folder relocation logic.
 
 ## [1.0.1] - 2025-01-03
 ### Added

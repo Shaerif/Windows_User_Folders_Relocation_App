@@ -121,4 +121,37 @@ dmypy.json
 # Ignore log folder
 logs/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+logs/
+
+# Virtual Environments
+venv/
+env/
+
+# PyInstaller
+/dist
+/build
+*.spec
+
+# IDEs
+.vscode/
+.idea/
+
+# Backup files
+*.bak
+*.tmp
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# User-specific files
+WindowsUserFoldersRelocation/backups/
+
 

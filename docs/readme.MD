@@ -292,6 +292,45 @@ For issues and support:
 2. Open an issue on GitHub
 3. Include log files when reporting problems
 
+## 🛠️ Troubleshooting
+
+- **Permission Issues:**
+  - Ensure you are running the script with administrative privileges.
+  - Ensure you are running the script with administrative privileges.
+  
+- **Insufficient Disk Space:**
+  - Verify that the target drive has at least 5GB of free space.
+  
+- **Unsupported Operating System:**
+  - This tool is only compatible with Windows 10 and 11.
+
+- **Unexpected Errors:**
+  - Check the log files located in `WindowsUserFoldersRelocation/logs` for detailed error messages.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please fork the repository and submit a pull request for any enhancements or bug fixes.
+
+## 🛠️ Continuous Integration
+
+This project utilizes **GitHub Actions** to ensure code quality and functionality. Every push and pull request triggers automated **unit** and **integration tests**, providing immediate feedback on the health of the codebase.
+
+### How It Works
+
+1. **Checkout Repository:** The workflow checks out the latest code from the repository.
+2. **Set Up Python:** It sets up the specified Python environment.
+3. **Install Dependencies:** Installs all required Python packages.
+4. **Run Tests:** Executes both unit and integration tests to validate changes.
+
+### Status
+
+You can view the status of the CI pipeline in the repository's **Actions** tab. Successful tests ensure that your contributions meet the project's standards and do not introduce regressions.
+
+```yaml
+# GitHub Actions workflows are defined in the .github/workflows/ci.yml file.
+# The CI pipeline runs automatically on every push and pull request to the main branch.
+```
+
 ## 📜 License
 
 Non-Commercial Educational and Non-Profit License - See LICENSE file for details
